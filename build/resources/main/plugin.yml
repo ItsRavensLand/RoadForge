@@ -1,0 +1,17 @@
+name: RoadForge
+version: '${version}'
+main: io.github.ItsRavensLand.roadForge.RoadForge
+api-version: '1.21'
+description: Organic road formation based on player traffic
+authors: [ RavensLand ]
+
+commands:
+  roadforge:
+    description: RoadForge admin commands
+    usage: /roadforge <reload|info|reset>
+    permission: roadforge.admin
+
+permissions:
+  roadforge.admin:
+    description: Access to RoadForge admin commands
+    default: op

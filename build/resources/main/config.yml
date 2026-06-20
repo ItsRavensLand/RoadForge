@@ -1,0 +1,56 @@
+# RoadForge Configuration
+
+# How often traffic data is saved to disk (in seconds)
+save-interval: 300
+
+# How often road upgrades are processed (in seconds)
+upgrade-interval: 60
+
+# How often road merging is checked (in seconds)
+merge-check-interval: 120
+
+# Road decay: blocks lose traffic points over time
+decay:
+  enabled: true
+  # How often decay runs (in seconds)
+  interval: 3600
+  # How many points are removed per decay cycle
+  amount: 5
+
+# Traffic thresholds for each road tier
+# When a block reaches this many points, it upgrades
+thresholds:
+  dirt_path: 50        # Grass -> Dirt Path
+  gravel: 200          # Dirt Path -> Gravel
+  cobblestone: 500     # Gravel -> Cobblestone
+  stone_bricks: 1000   # Cobblestone -> Stone Bricks
+  smooth_stone: 2000   # Stone Bricks -> Smooth Stone
+
+# Road merging configuration
+merging:
+  enabled: true
+  # Minimum distance between two paths to trigger merging (blocks)
+  min-distance: 10
+  # Maximum distance between two paths to trigger merging (blocks)
+  max-distance: 20
+  # How many artificial traffic points are added per merge tick
+  pull-strength: 5
+
+# Worlds where RoadForge is active
+enabled-worlds:
+  - world
+
+# Blocks that are excluded from road formation (won't be converted)
+excluded-blocks:
+  - WATER
+  - LAVA
+  - BEDROCK
+  - CHEST
+  - FURNACE
+  - CRAFTING_TABLE
+
+# Blocks that can be upgraded by traffic
+upgradeable-blocks:
+  - GRASS_BLOCK
+  - DIRT
+  - COARSE_DIRT
