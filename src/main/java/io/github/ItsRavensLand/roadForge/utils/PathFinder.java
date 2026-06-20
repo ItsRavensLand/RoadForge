@@ -10,8 +10,8 @@ import java.util.*;
 public class PathFinder {
 
     private record Node(int x, int y, int z, Node parent, double g, double h) {
-        double f()      { return g + h; }
-        String key()    { return x + ":" + y + ":" + z; }
+        double f()   { return g + h; }
+        String key() { return x + ":" + y + ":" + z; }
     }
 
     private static final int[][] DIRS = {
@@ -26,8 +26,8 @@ public class PathFinder {
         if (!from.getWorld().equals(to.getWorld())) return null;
 
         World world = from.getWorld();
-        PriorityQueue<Node>  open   = new PriorityQueue<>(Comparator.comparingDouble(Node::f));
-        Map<String, Node>    closed = new HashMap<>();
+        PriorityQueue<Node> open   = new PriorityQueue<>(Comparator.comparingDouble(Node::f));
+        Set<String>         closed = new HashSet<>();
 
         open.add(new Node(from.getBlockX(), from.getBlockY(), from.getBlockZ(), null,
                 0, h(from.getBlockX(), from.getBlockZ(), to.getBlockX(), to.getBlockZ())));
@@ -35,23 +35,22 @@ public class PathFinder {
         int explored = 0;
         while (!open.isEmpty() && explored++ < maxNodes) {
             Node cur = open.poll();
+            if (!closed.add(cur.key())) continue;
 
             if (cur.x == to.getBlockX() && cur.z == to.getBlockZ()) {
                 return buildPath(cur, world);
             }
-
-            if (!closed.putIfAbsent(cur.key(), cur).equals(cur)) continue;
 
             for (int[] d : DIRS) {
                 int nx = cur.x + d[0], nz = cur.z + d[1];
                 int ny = surfaceY(world, nx, nz, cur.y);
                 if (ny < 0) continue;
 
+                String nk = nx + ":" + ny + ":" + nz;
+                if (closed.contains(nk)) continue;
+
                 Material mat = world.getBlockAt(nx, ny, nz).getType();
                 if (blocked(mat)) continue;
-
-                String nk = nx + ":" + ny + ":" + nz;
-                if (closed.containsKey(nk)) continue;
 
                 double ng = cur.g + 1.0 + Math.abs(ny - cur.y) * 0.5;
                 double nh = h(nx, nz, to.getBlockX(), to.getBlockZ());

@@ -1,86 +1,132 @@
-# RoadForge Configuration
+#https://github.com/ItsRavensLand
+#https://www.spigotmc.org/members/ltsravensland.2556924/
 
-# How many blocks around the player receive traffic points (radius)
-# Center gets 3 pts, adjacent get 2 pts, outer ring gets 1 pt
+# ┌──────────────────────────────────────────┐
+# │           RoadForge  Config              │
+# │  Organic road formation from foot traffic│
+# └──────────────────────────────────────────┘
+
+# ── Traffic ──────────────────────────────────────────────────────────────────
+
+# How many blocks around the player receive traffic each step.
+# Center block gets 3 pts, adjacent get 2, outer ring gets 1.
+# Raise this for wider roads. Default: 2 (produces ~5-block wide roads).
 traffic-radius: 2
 
-# How often traffic data is saved to disk (in seconds)
+# ── Timing ───────────────────────────────────────────────────────────────────
+
+# How often traffic data is written to disk (seconds).
 save-interval: 300
 
-# How often road upgrades are processed (in seconds)
+# How often road block upgrades are processed (seconds).
+# Lower values = faster road formation. Recommended: 30–120.
 upgrade-interval: 60
 
-# How often road merging is checked (in seconds)
+# How often nearby roads are checked for merging (seconds).
 merge-check-interval: 120
 
-# Road decay: blocks lose traffic points over time
-decay:
-  enabled: true
-  # How often decay runs (in seconds)
-  interval: 3600
-  # How many points are removed per decay cycle
-  amount: 5
+# ── Road Upgrade Thresholds ──────────────────────────────────────────────────
+# Traffic points required before a block can upgrade to that tier.
+# Increase values for slower, more realistic road growth.
+#
+# Tier 1 — Grass / Dirt  →  Dirt Path        (light use)
+# Tier 2 — Dirt Path     →  Gravel           (regular use)
+# Tier 3 — Gravel        →  Cobblestone      (heavy use)
+# Tier 4 — Cobblestone   →  Stone Bricks     (very heavy)
+# Tier 5 — Stone Bricks  →  Smooth Stone     (main road)
 
-# Traffic thresholds for each road tier
-# When a block reaches this many points, it upgrades
 thresholds:
-  dirt_path: 50
-  gravel: 200
+  dirt_path:   50
+  gravel:      200
   cobblestone: 500
   stone_bricks: 1000
   smooth_stone: 2000
 
-# Road merging configuration
-merging:
-  enabled: true
-  min-distance: 10
-  max-distance: 20
-  pull-strength: 5
+# ── Road Block Variants ───────────────────────────────────────────────────────
+# Override which blocks appear at each tier using weighted random selection.
+# Weight is relative — higher numbers = appear more often.
+# Totals do not need to add up to 100.
+#
+# Example: tier-3 below means cobblestone appears ~50% of the time,
+# mossy cobblestone ~30%, and gravel ~20%.
 
-# Side wall decorations along road edges
-walls:
-  # Chance (0.0 to 1.0) that a wall block spawns on the side of a new road block
-  # 0 = disabled, 0.15 = 15% chance per side
-  chance: 0.15
-
-# Road block variants with weight (higher = more common)
-# These override the default tier materials
 road-blocks:
   tier-1:
-    DIRT_PATH: 80
+    DIRT_PATH:   80
     COARSE_DIRT: 20
   tier-2:
-    GRAVEL: 70
+    GRAVEL:      70
     COARSE_DIRT: 30
   tier-3:
-    COBBLESTONE: 50
+    COBBLESTONE:       50
     MOSSY_COBBLESTONE: 30
-    GRAVEL: 20
+    GRAVEL:            20
   tier-4:
-    STONE_BRICKS: 50
-    MOSSY_STONE_BRICKS: 25
+    STONE_BRICKS:         50
+    MOSSY_STONE_BRICKS:   25
     CRACKED_STONE_BRICKS: 25
   tier-5:
-    SMOOTH_STONE: 70
+    SMOOTH_STONE:  70
     SMOOTH_BASALT: 30
 
-# Overlay blocks placed on top of road surface (decorative layer)
-# enabled: false to disable entirely
-# Use NONE to leave some spots empty (acts as empty weight)
+# ── Overlay Blocks ────────────────────────────────────────────────────────────
+# Optional decorative blocks placed on top of newly formed road blocks.
+# Useful for adding pressure plates, lanterns, or other decorations.
+# enabled: false disables this entirely.
+# NONE acts as an empty slot (no block placed). Give it a high weight
+# to keep decorations rare.
+#
+# Example below: pressure plates appear on ~30% of new road blocks.
+
 overlay:
   enabled: false
   blocks:
-    NONE: 70
-    OAK_PRESSURE_PLATE: 10
-    STONE_PRESSURE_PLATE: 10
-    DARK_OAK_PRESSURE_PLATE: 5
-    HEAVY_WEIGHTED_PRESSURE_PLATE: 5
+    NONE:                           70
+    OAK_PRESSURE_PLATE:             10
+    STONE_PRESSURE_PLATE:           10
+    DARK_OAK_PRESSURE_PLATE:         5
+    HEAVY_WEIGHTED_PRESSURE_PLATE:   5
 
-# Worlds where RoadForge is active (empty = all worlds)
+# ── Decay ─────────────────────────────────────────────────────────────────────
+# Roads decay over time if unused. When a block's points reach 0,
+# it stops being tracked (though the physical block stays until it's walked on again).
+
+decay:
+  enabled: true
+  # How often decay runs (seconds). Default: every hour.
+  interval: 3600
+  # Points removed per decay cycle. Default: 5.
+  amount: 5
+
+# ── Road Merging ──────────────────────────────────────────────────────────────
+# When two roads come within range, RoadForge gradually connects them
+# by adding artificial traffic points along the gap between them.
+
+merging:
+  enabled: true
+  # Minimum gap (blocks) before merging activates. Roads closer than this merge instantly.
+  min-distance: 10
+  # Maximum gap (blocks) where merging still applies. Beyond this, roads stay separate.
+  max-distance: 20
+  # Traffic points added per merge cycle to gap blocks.
+  pull-strength: 5
+
+# ── Side Walls ────────────────────────────────────────────────────────────────
+# Decorative wall blocks placed along road edges.
+# 0.0 = disabled, 1.0 = place on every eligible edge block.
+# Recommended: 0.05–0.15 for a subtle, natural look.
+
+walls:
+  chance: 0.10
+
+# ── World Filter ─────────────────────────────────────────────────────────────
+# Worlds where RoadForge is active. Leave empty to enable in all worlds.
 enabled-worlds:
   - world
 
-# Blocks that are excluded from road formation
+# ── Excluded Blocks ───────────────────────────────────────────────────────────
+# Blocks that will never receive traffic or be upgraded.
+# Add any block you don't want roads forming on or through.
 excluded-blocks:
   - WATER
   - LAVA
@@ -88,25 +134,3 @@ excluded-blocks:
   - CHEST
   - FURNACE
   - CRAFTING_TABLE
-
-# Blocks that can be upgraded by traffic (surface natural blocks)
-upgradeable-blocks:
-  # Soil
-  - GRASS_BLOCK
-  - DIRT
-  - COARSE_DIRT
-  - ROOTED_DIRT
-  - PODZOL
-  - MYCELIUM
-  # Desert / beach
-  - SAND
-  - RED_SAND
-  # Mountain / stone
-  - STONE
-  - DEEPSLATE
-  - TUFF
-  - CALCITE
-  - DRIPSTONE_BLOCK
-  # Snowy
-  - SNOW_BLOCK
-  - POWDER_SNOW
