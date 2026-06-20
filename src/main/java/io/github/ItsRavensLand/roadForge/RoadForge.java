@@ -2,9 +2,11 @@ package io.github.ItsRavensLand.roadForge;
 
 
 import io.github.ItsRavensLand.roadForge.commands.RoadForgeCommand;
+import io.github.ItsRavensLand.roadForge.listeners.BlockBreakListener;
 import io.github.ItsRavensLand.roadForge.listeners.PlayerMoveListener;
 import io.github.ItsRavensLand.roadForge.managers.ConfigManager;
 import io.github.ItsRavensLand.roadForge.managers.RoadManager;
+
 import io.github.ItsRavensLand.roadForge.managers.TrafficManager;
 import io.github.ItsRavensLand.roadForge.tasks.DecayTask;
 import io.github.ItsRavensLand.roadForge.tasks.MergeTask;
@@ -49,6 +51,7 @@ public class RoadForge extends JavaPlugin {
 
     private void registerListeners() {
         getServer().getPluginManager().registerEvents(new PlayerMoveListener(this), this);
+        getServer().getPluginManager().registerEvents(new BlockBreakListener(this), this);
     }
 
     private void registerCommands() {

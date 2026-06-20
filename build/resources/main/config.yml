@@ -4,6 +4,7 @@
 # Center gets 3 pts, adjacent get 2 pts, outer ring gets 1 pt
 traffic-radius: 2
 
+# How often traffic data is saved to disk (in seconds)
 save-interval: 300
 
 # How often road upgrades are processed (in seconds)
@@ -23,27 +24,63 @@ decay:
 # Traffic thresholds for each road tier
 # When a block reaches this many points, it upgrades
 thresholds:
-  dirt_path: 50        # Grass -> Dirt Path
-  gravel: 200          # Dirt Path -> Gravel
-  cobblestone: 500     # Gravel -> Cobblestone
-  stone_bricks: 1000   # Cobblestone -> Stone Bricks
-  smooth_stone: 2000   # Stone Bricks -> Smooth Stone
+  dirt_path: 50
+  gravel: 200
+  cobblestone: 500
+  stone_bricks: 1000
+  smooth_stone: 2000
 
 # Road merging configuration
 merging:
   enabled: true
-  # Minimum distance between two paths to trigger merging (blocks)
   min-distance: 10
-  # Maximum distance between two paths to trigger merging (blocks)
   max-distance: 20
-  # How many artificial traffic points are added per merge tick
   pull-strength: 5
 
-# Worlds where RoadForge is active
+# Side wall decorations along road edges
+walls:
+  # Chance (0.0 to 1.0) that a wall block spawns on the side of a new road block
+  # 0 = disabled, 0.15 = 15% chance per side
+  chance: 0.15
+
+# Road block variants with weight (higher = more common)
+# These override the default tier materials
+road-blocks:
+  tier-1:
+    DIRT_PATH: 80
+    COARSE_DIRT: 20
+  tier-2:
+    GRAVEL: 70
+    COARSE_DIRT: 30
+  tier-3:
+    COBBLESTONE: 50
+    MOSSY_COBBLESTONE: 30
+    GRAVEL: 20
+  tier-4:
+    STONE_BRICKS: 50
+    MOSSY_STONE_BRICKS: 25
+    CRACKED_STONE_BRICKS: 25
+  tier-5:
+    SMOOTH_STONE: 70
+    SMOOTH_BASALT: 30
+
+# Overlay blocks placed on top of road surface (decorative layer)
+# enabled: false to disable entirely
+# Use NONE to leave some spots empty (acts as empty weight)
+overlay:
+  enabled: false
+  blocks:
+    NONE: 70
+    OAK_PRESSURE_PLATE: 10
+    STONE_PRESSURE_PLATE: 10
+    DARK_OAK_PRESSURE_PLATE: 5
+    HEAVY_WEIGHTED_PRESSURE_PLATE: 5
+
+# Worlds where RoadForge is active (empty = all worlds)
 enabled-worlds:
   - world
 
-# Blocks that are excluded from road formation (won't be converted)
+# Blocks that are excluded from road formation
 excluded-blocks:
   - WATER
   - LAVA
@@ -52,7 +89,7 @@ excluded-blocks:
   - FURNACE
   - CRAFTING_TABLE
 
-# Blocks that can be upgraded by traffic
+# Blocks that can be upgraded by traffic (surface natural blocks)
 upgradeable-blocks:
   # Soil
   - GRASS_BLOCK

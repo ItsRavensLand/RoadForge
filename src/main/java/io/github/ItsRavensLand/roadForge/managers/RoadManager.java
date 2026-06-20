@@ -1,6 +1,5 @@
 package io.github.ItsRavensLand.roadForge.managers;
 
-
 import io.github.ItsRavensLand.roadForge.RoadForge;
 import io.github.ItsRavensLand.roadForge.models.RoadTier;
 import io.github.ItsRavensLand.roadForge.models.TrafficBlock;
@@ -11,56 +10,157 @@ import org.bukkit.Material;
 import org.bukkit.World;
 
 import java.util.*;
+import java.util.stream.Collectors;
 
 public class RoadManager {
 
     private final RoadForge plugin;
     private final ConfigManager config;
     private final TrafficManager traffic;
+    private final RoadBlockRegistry blockRegistry;
+
+    private final Set<String> frozenBlocks = new HashSet<>();
+    private static final Random RANDOM = new Random();
+    private static final double FREEZE_CHANCE = 0.18;
+    private static final int[][] SIDES = {{1, 0}, {-1, 0}, {0, 1}, {0, -1}};
 
     public RoadManager(RoadForge plugin) {
         this.plugin = plugin;
         this.config = plugin.getConfigManager();
         this.traffic = plugin.getTrafficManager();
+        this.blockRegistry = new RoadBlockRegistry(plugin.getConfig());
     }
 
-    private static final java.util.Random RANDOM = new java.util.Random();
-
-    // Called by UpgradeTask every upgrade-interval
     public void processUpgrades() {
-        for (TrafficBlock tb : traffic.getAllBlocks()) {
+        List<TrafficBlock> candidates = traffic.getAllBlocks().stream()
+                .filter(tb -> tb.getPoints() > 0)
+                .sorted((a, b) -> Long.compare(b.getPoints(), a.getPoints()))
+                .collect(Collectors.toList());
+
+        List<Location> newlyUpgraded = new ArrayList<>();
+
+        for (TrafficBlock tb : candidates) {
             World world = Bukkit.getWorld(tb.getWorld());
             if (world == null) continue;
             if (!config.isWorldEnabled(tb.getWorld())) continue;
 
             Location loc = new Location(world, tb.getX(), tb.getY(), tb.getZ());
-            Material current = world.getBlockAt(loc).getType();
+            String key = locKey(loc);
 
+            if (frozenBlocks.contains(key)) continue;
+
+            Material current = world.getBlockAt(loc).getType();
             if (config.isExcluded(current)) continue;
 
             RoadTier tier = RoadTier.fromMaterial(current);
             if (tier == null || !tier.isUpgradeable()) continue;
 
-            // Only upgrade surface blocks
-            Location above = loc.clone().add(0, 1, 0);
-            if (!world.getBlockAt(above).getType().isAir()) continue;
+            if (!world.getBlockAt(loc.getBlockX(), loc.getBlockY() + 1, loc.getBlockZ()).getType().isAir()) continue;
 
             RoadTier next = tier.next();
             long threshold = getThresholdForUpgrade(tier, next);
 
             if (tb.getPoints() >= threshold) {
-                // Randomize upgrade: not every block upgrades exactly at threshold
-                // Higher traffic = higher chance (max 90%)
                 double overshoot = (double) tb.getPoints() / threshold;
                 double chance = Math.min(0.9, 0.4 + (overshoot - 1.0) * 0.3);
                 if (RANDOM.nextDouble() <= chance) {
-                    world.getBlockAt(loc).setType(next.getMaterial());
+                    // Pick road block from config registry
+                    int tierNum = getTierNumber(next);
+                    Material roadMat = tierNum > 0
+                            ? blockRegistry.pickForTier(tierNum, next.getMaterial())
+                            : next.getMaterial();
+                    world.getBlockAt(loc).setType(roadMat);
+
+                    // Place overlay block on top if enabled
+                    if (blockRegistry.isOverlayEnabled()) {
+                        Material overlay = blockRegistry.pickOverlay();
+                        if (overlay != null) {
+                            Location aboveLoc = loc.clone().add(0, 1, 0);
+                            if (world.getBlockAt(aboveLoc).getType().isAir()) {
+                                world.getBlockAt(aboveLoc).setType(overlay);
+                            }
+                        }
+                    }
+
+                    if (RANDOM.nextDouble() < FREEZE_CHANCE) {
+                        frozenBlocks.add(key);
+                    }
+
+                    if (tier.isBase()) {
+                        newlyUpgraded.add(loc.clone());
+                    }
                 }
+            }
+        }
+
+        double wallChance = config.getWallChance();
+        if (wallChance > 0 && !newlyUpgraded.isEmpty()) {
+            for (Location roadBlock : newlyUpgraded) {
+                placeSideWalls(roadBlock, roadBlock.getWorld(), wallChance);
             }
         }
     }
 
-    // Called by MergeTask every merge-check-interval
+    private int getTierNumber(RoadTier next) {
+        return switch (next) {
+            case DIRT_PATH -> 1;
+            case GRAVEL -> 2;
+            case COBBLESTONE, MOSSY_COBBLESTONE -> 3;
+            case STONE_BRICKS, MOSSY_STONE_BRICKS, CRACKED_STONE_BRICKS -> 4;
+            case SMOOTH_STONE, SMOOTH_BASALT -> 5;
+            default -> 0;
+        };
+    }
+
+    private void placeSideWalls(Location roadBlock, World world, double wallChance) {
+        int rx = roadBlock.getBlockX();
+        int ry = roadBlock.getBlockY();
+        int rz = roadBlock.getBlockZ();
+
+        for (int[] side : SIDES) {
+            int sx = rx + side[0];
+            int sz = rz + side[1];
+
+            if (isRoad(world, sx, ry, sz)) continue;
+
+            boolean touchesRoad = false;
+            for (int[] n : SIDES) {
+                if (sx + n[0] == rx && sz + n[1] == rz) continue;
+                if (isRoad(world, sx + n[0], ry, sz + n[1])) {
+                    touchesRoad = true;
+                    break;
+                }
+            }
+            if (touchesRoad) continue;
+
+            Location wallLoc = new Location(world, sx, ry + 1, sz);
+            if (!world.getBlockAt(wallLoc).getType().isAir()) continue;
+
+            if (RANDOM.nextDouble() > wallChance) continue;
+
+            Material wallMat = pickWallMaterial();
+            if (wallMat != null) {
+                world.getBlockAt(wallLoc).setType(wallMat);
+            }
+        }
+    }
+
+    private boolean isRoad(World world, int x, int y, int z) {
+        Material mat = world.getBlockAt(x, y, z).getType();
+        RoadTier tier = RoadTier.fromMaterial(mat);
+        return tier != null && !tier.isBase();
+    }
+
+    private Material pickWallMaterial() {
+        return switch (RANDOM.nextInt(5)) {
+            case 0 -> Material.COBBLESTONE_WALL;
+            case 1 -> Material.MOSSY_COBBLESTONE_WALL;
+            case 2 -> Material.STONE_BRICK_WALL;
+            case 3 -> Material.ANDESITE_WALL;
+            default -> null;
+        };
+    }
+
     public void processMerging() {
         if (!config.isMergingEnabled()) return;
 
@@ -80,7 +180,6 @@ public class RoadManager {
         int maxDist = config.getMergeMaxDistance();
         long pullStrength = config.getMergePullStrength();
 
-        // Find pairs of path blocks within merge range
         Set<String> processed = new HashSet<>();
         for (int i = 0; i < pathBlocks.size(); i++) {
             for (int j = i + 1; j < pathBlocks.size(); j++) {
@@ -101,7 +200,6 @@ public class RoadManager {
         }
     }
 
-    // Uses A* pathfinding to find path between two blocks and add traffic points
     private void applyMergePull(TrafficBlock from, TrafficBlock to, long strength) {
         World world = Bukkit.getWorld(from.getWorld());
         if (world == null) return;
@@ -110,9 +208,10 @@ public class RoadManager {
         Location locB = new Location(world, to.getX(), to.getY(), to.getZ());
 
         List<Location> path = PathFinder.findPath(locA, locB, 25);
-        if (path == null) return;
+        if (path == null || path.size() <= 2) return;
 
-        for (Location loc : path) {
+        List<Location> middle = path.subList(1, path.size() - 1);
+        for (Location loc : middle) {
             Material mat = world.getBlockAt(loc).getType();
             if (!config.isExcluded(mat)) {
                 traffic.addPoints(loc, strength);
@@ -124,9 +223,9 @@ public class RoadManager {
         return switch (next) {
             case DIRT_PATH -> config.getThresholdForTier("dirt_path");
             case GRAVEL -> config.getThresholdForTier("gravel");
-            case COBBLESTONE -> config.getThresholdForTier("cobblestone");
-            case STONE_BRICKS -> config.getThresholdForTier("stone_bricks");
-            case SMOOTH_STONE -> config.getThresholdForTier("smooth_stone");
+            case COBBLESTONE, MOSSY_COBBLESTONE -> config.getThresholdForTier("cobblestone");
+            case STONE_BRICKS, MOSSY_STONE_BRICKS, CRACKED_STONE_BRICKS -> config.getThresholdForTier("stone_bricks");
+            case SMOOTH_STONE, SMOOTH_BASALT -> config.getThresholdForTier("smooth_stone");
             default -> Long.MAX_VALUE;
         };
     }
@@ -135,5 +234,17 @@ public class RoadManager {
         double dx = a.getX() - b.getX();
         double dz = a.getZ() - b.getZ();
         return Math.sqrt(dx * dx + dz * dz);
+    }
+
+    private String locKey(Location loc) {
+        return loc.getWorld().getName() + ":" + loc.getBlockX() + ":" + loc.getBlockY() + ":" + loc.getBlockZ();
+    }
+
+    public Set<String> getFrozenBlocks() {
+        return frozenBlocks;
+    }
+
+    public RoadBlockRegistry getBlockRegistry() {
+        return blockRegistry;
     }
 }

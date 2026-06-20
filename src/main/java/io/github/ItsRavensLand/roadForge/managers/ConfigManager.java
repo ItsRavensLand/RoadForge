@@ -39,6 +39,9 @@ public class ConfigManager {
     // Traffic radius
     private int trafficRadius;
 
+    // Wall chance
+    private double wallChance;
+
     // Worlds & blocks
     private Set<String> enabledWorlds;
     private Set<Material> excludedBlocks;
@@ -68,6 +71,7 @@ public class ConfigManager {
         decayAmount = config.getLong("decay.amount", 5);
 
         trafficRadius = config.getInt("traffic-radius", 2);
+        wallChance = config.getDouble("walls.chance", 0.25);
 
         mergingEnabled = config.getBoolean("merging.enabled", true);
         mergeMinDistance = config.getInt("merging.min-distance", 10);
@@ -111,6 +115,7 @@ public class ConfigManager {
     }
 
     public int getTrafficRadius() { return trafficRadius; }
+    public double getWallChance() { return wallChance; }
     public int getSaveInterval() { return saveInterval; }
     public int getUpgradeInterval() { return upgradeInterval; }
     public int getMergeCheckInterval() { return mergeCheckInterval; }
