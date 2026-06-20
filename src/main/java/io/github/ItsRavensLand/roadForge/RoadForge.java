@@ -1,17 +1,16 @@
 package io.github.ItsRavensLand.roadForge;
 
-
 import io.github.ItsRavensLand.roadForge.commands.RoadForgeCommand;
 import io.github.ItsRavensLand.roadForge.listeners.BlockBreakListener;
 import io.github.ItsRavensLand.roadForge.listeners.PlayerMoveListener;
 import io.github.ItsRavensLand.roadForge.managers.ConfigManager;
 import io.github.ItsRavensLand.roadForge.managers.RoadManager;
-
 import io.github.ItsRavensLand.roadForge.managers.TrafficManager;
 import io.github.ItsRavensLand.roadForge.tasks.DecayTask;
 import io.github.ItsRavensLand.roadForge.tasks.MergeTask;
 import io.github.ItsRavensLand.roadForge.tasks.SaveTask;
 import io.github.ItsRavensLand.roadForge.tasks.UpgradeTask;
+import io.github.ItsRavensLand.roadForge.tasks.WallTask;
 import org.bukkit.plugin.java.JavaPlugin;
 
 public class RoadForge extends JavaPlugin {
@@ -68,10 +67,12 @@ public class RoadForge extends JavaPlugin {
         long upgradeTicks = configManager.getUpgradeInterval() * 20L;
         long mergeTicks = configManager.getMergeCheckInterval() * 20L;
         long decayTicks = configManager.getDecayInterval() * 20L;
+        long wallTicks = upgradeTicks * 3L;
 
         new SaveTask(this).runTaskTimerAsynchronously(this, saveTicks, saveTicks);
         new UpgradeTask(this).runTaskTimer(this, upgradeTicks, upgradeTicks);
         new MergeTask(this).runTaskTimer(this, mergeTicks, mergeTicks);
+        new WallTask(this).runTaskTimer(this, wallTicks, wallTicks);
 
         if (configManager.isDecayEnabled()) {
             new DecayTask(this).runTaskTimerAsynchronously(this, decayTicks, decayTicks);

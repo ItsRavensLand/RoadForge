@@ -22,7 +22,6 @@ public class RoadManager {
     private final Set<String> frozenBlocks = new HashSet<>();
     private static final Random RANDOM = new Random();
     private static final double FREEZE_CHANCE = 0.18;
-    private static final int[][] SIDES = {{1, 0}, {-1, 0}, {0, 1}, {0, -1}};
 
     public RoadManager(RoadForge plugin) {
         this.plugin = plugin;
@@ -36,8 +35,6 @@ public class RoadManager {
                 .filter(tb -> tb.getPoints() > 0)
                 .sorted((a, b) -> Long.compare(b.getPoints(), a.getPoints()))
                 .collect(Collectors.toList());
-
-        List<Location> newlyUpgraded = new ArrayList<>();
 
         for (TrafficBlock tb : candidates) {
             World world = Bukkit.getWorld(tb.getWorld());
@@ -64,14 +61,12 @@ public class RoadManager {
                 double overshoot = (double) tb.getPoints() / threshold;
                 double chance = Math.min(0.9, 0.4 + (overshoot - 1.0) * 0.3);
                 if (RANDOM.nextDouble() <= chance) {
-                    // Pick road block from config registry
                     int tierNum = getTierNumber(next);
                     Material roadMat = tierNum > 0
                             ? blockRegistry.pickForTier(tierNum, next.getMaterial())
                             : next.getMaterial();
                     world.getBlockAt(loc).setType(roadMat);
 
-                    // Place overlay block on top if enabled
                     if (blockRegistry.isOverlayEnabled()) {
                         Material overlay = blockRegistry.pickOverlay();
                         if (overlay != null) {
@@ -85,80 +80,9 @@ public class RoadManager {
                     if (RANDOM.nextDouble() < FREEZE_CHANCE) {
                         frozenBlocks.add(key);
                     }
-
-                    if (tier.isBase()) {
-                        newlyUpgraded.add(loc.clone());
-                    }
                 }
             }
         }
-
-        double wallChance = config.getWallChance();
-        if (wallChance > 0 && !newlyUpgraded.isEmpty()) {
-            for (Location roadBlock : newlyUpgraded) {
-                placeSideWalls(roadBlock, roadBlock.getWorld(), wallChance);
-            }
-        }
-    }
-
-    private int getTierNumber(RoadTier next) {
-        return switch (next) {
-            case DIRT_PATH -> 1;
-            case GRAVEL -> 2;
-            case COBBLESTONE, MOSSY_COBBLESTONE -> 3;
-            case STONE_BRICKS, MOSSY_STONE_BRICKS, CRACKED_STONE_BRICKS -> 4;
-            case SMOOTH_STONE, SMOOTH_BASALT -> 5;
-            default -> 0;
-        };
-    }
-
-    private void placeSideWalls(Location roadBlock, World world, double wallChance) {
-        int rx = roadBlock.getBlockX();
-        int ry = roadBlock.getBlockY();
-        int rz = roadBlock.getBlockZ();
-
-        for (int[] side : SIDES) {
-            int sx = rx + side[0];
-            int sz = rz + side[1];
-
-            if (isRoad(world, sx, ry, sz)) continue;
-
-            boolean touchesRoad = false;
-            for (int[] n : SIDES) {
-                if (sx + n[0] == rx && sz + n[1] == rz) continue;
-                if (isRoad(world, sx + n[0], ry, sz + n[1])) {
-                    touchesRoad = true;
-                    break;
-                }
-            }
-            if (touchesRoad) continue;
-
-            Location wallLoc = new Location(world, sx, ry + 1, sz);
-            if (!world.getBlockAt(wallLoc).getType().isAir()) continue;
-
-            if (RANDOM.nextDouble() > wallChance) continue;
-
-            Material wallMat = pickWallMaterial();
-            if (wallMat != null) {
-                world.getBlockAt(wallLoc).setType(wallMat);
-            }
-        }
-    }
-
-    private boolean isRoad(World world, int x, int y, int z) {
-        Material mat = world.getBlockAt(x, y, z).getType();
-        RoadTier tier = RoadTier.fromMaterial(mat);
-        return tier != null && !tier.isBase();
-    }
-
-    private Material pickWallMaterial() {
-        return switch (RANDOM.nextInt(5)) {
-            case 0 -> Material.COBBLESTONE_WALL;
-            case 1 -> Material.MOSSY_COBBLESTONE_WALL;
-            case 2 -> Material.STONE_BRICK_WALL;
-            case 3 -> Material.ANDESITE_WALL;
-            default -> null;
-        };
     }
 
     public void processMerging() {
@@ -177,6 +101,7 @@ public class RoadManager {
         }
 
         int minDist = config.getMergeMinDistance();
+
         int maxDist = config.getMergeMaxDistance();
         long pullStrength = config.getMergePullStrength();
 
@@ -217,6 +142,17 @@ public class RoadManager {
                 traffic.addPoints(loc, strength);
             }
         }
+    }
+
+    private int getTierNumber(RoadTier next) {
+        return switch (next) {
+            case DIRT_PATH -> 1;
+            case GRAVEL -> 2;
+            case COBBLESTONE, MOSSY_COBBLESTONE -> 3;
+            case STONE_BRICKS, MOSSY_STONE_BRICKS, CRACKED_STONE_BRICKS -> 4;
+            case SMOOTH_STONE, SMOOTH_BASALT -> 5;
+            default -> 0;
+        };
     }
 
     private long getThresholdForUpgrade(RoadTier current, RoadTier next) {
