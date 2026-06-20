@@ -24,6 +24,8 @@ public class RoadManager {
         this.traffic = plugin.getTrafficManager();
     }
 
+    private static final java.util.Random RANDOM = new java.util.Random();
+
     // Called by UpgradeTask every upgrade-interval
     public void processUpgrades() {
         for (TrafficBlock tb : traffic.getAllBlocks()) {
@@ -39,11 +41,21 @@ public class RoadManager {
             RoadTier tier = RoadTier.fromMaterial(current);
             if (tier == null || !tier.isUpgradeable()) continue;
 
+            // Only upgrade surface blocks
+            Location above = loc.clone().add(0, 1, 0);
+            if (!world.getBlockAt(above).getType().isAir()) continue;
+
             RoadTier next = tier.next();
             long threshold = getThresholdForUpgrade(tier, next);
 
             if (tb.getPoints() >= threshold) {
-                world.getBlockAt(loc).setType(next.getMaterial());
+                // Randomize upgrade: not every block upgrades exactly at threshold
+                // Higher traffic = higher chance (max 90%)
+                double overshoot = (double) tb.getPoints() / threshold;
+                double chance = Math.min(0.9, 0.4 + (overshoot - 1.0) * 0.3);
+                if (RANDOM.nextDouble() <= chance) {
+                    world.getBlockAt(loc).setType(next.getMaterial());
+                }
             }
         }
     }

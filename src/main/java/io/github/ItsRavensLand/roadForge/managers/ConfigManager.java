@@ -6,7 +6,6 @@ import org.bukkit.Material;
 import org.bukkit.configuration.file.FileConfiguration;
 
 import java.util.HashSet;
-import java.util.List;
 import java.util.Set;
 
 public class ConfigManager {
@@ -37,6 +36,9 @@ public class ConfigManager {
     private int mergeMaxDistance;
     private long mergePullStrength;
 
+    // Traffic radius
+    private int trafficRadius;
+
     // Worlds & blocks
     private Set<String> enabledWorlds;
     private Set<Material> excludedBlocks;
@@ -64,6 +66,8 @@ public class ConfigManager {
         decayEnabled = config.getBoolean("decay.enabled", true);
         decayInterval = config.getInt("decay.interval", 3600);
         decayAmount = config.getLong("decay.amount", 5);
+
+        trafficRadius = config.getInt("traffic-radius", 2);
 
         mergingEnabled = config.getBoolean("merging.enabled", true);
         mergeMinDistance = config.getInt("merging.min-distance", 10);
@@ -106,6 +110,7 @@ public class ConfigManager {
         return upgradeableBlocks.contains(material);
     }
 
+    public int getTrafficRadius() { return trafficRadius; }
     public int getSaveInterval() { return saveInterval; }
     public int getUpgradeInterval() { return upgradeInterval; }
     public int getMergeCheckInterval() { return mergeCheckInterval; }

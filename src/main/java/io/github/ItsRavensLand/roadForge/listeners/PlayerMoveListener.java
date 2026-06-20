@@ -14,26 +14,45 @@ public class PlayerMoveListener implements Listener {
 
     private final TrafficManager trafficManager;
     private final ConfigManager configManager;
+    private final int radius;
 
     public PlayerMoveListener(RoadForge plugin) {
         this.trafficManager = plugin.getTrafficManager();
         this.configManager = plugin.getConfigManager();
+        this.radius = configManager.getTrafficRadius();
     }
 
     @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = true)
     public void onPlayerMove(PlayerMoveEvent event) {
-        // Only record when player moves to a new block
         if (!hasMoved(event.getFrom(), event.getTo())) return;
 
         Location to = event.getTo();
         if (to == null || to.getWorld() == null) return;
         if (!configManager.isWorldEnabled(to.getWorld().getName())) return;
 
-        // Record the block the player is standing on (one below feet)
-        Location ground = to.clone();
-        ground.setY(to.getBlockY() - 1);
+        // Center block (directly under player)
+        Location center = to.clone();
+        center.setY(to.getBlockY() - 1);
 
-        trafficManager.recordStep(ground);
+        // Record center + radius blocks
+        for (int dx = -radius; dx <= radius; dx++) {
+            for (int dz = -radius; dz <= radius; dz++) {
+                // Skip corners for a more circular shape
+                if (Math.abs(dx) == radius && Math.abs(dz) == radius) continue;
+
+                Location candidate = center.clone().add(dx, 0, dz);
+
+                // Only apply on surface
+                Location surface = SurfaceUtil.getSurface(candidate);
+                if (surface == null) continue;
+
+                // Weight: center gets full point, edges get less
+                double dist = Math.sqrt(dx * dx + dz * dz);
+                long points = dist == 0 ? 3 : (dist <= 1 ? 2 : 1);
+
+                trafficManager.addPoints(surface, points);
+            }
+        }
     }
 
     private boolean hasMoved(Location from, Location to) {

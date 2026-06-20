@@ -1,6 +1,9 @@
 # RoadForge Configuration
 
-# How often traffic data is saved to disk (in seconds)
+# How many blocks around the player receive traffic points (radius)
+# Center gets 3 pts, adjacent get 2 pts, outer ring gets 1 pt
+traffic-radius: 2
+
 save-interval: 300
 
 # How often road upgrades are processed (in seconds)
@@ -51,6 +54,22 @@ excluded-blocks:
 
 # Blocks that can be upgraded by traffic
 upgradeable-blocks:
+  # Soil
   - GRASS_BLOCK
   - DIRT
   - COARSE_DIRT
+  - ROOTED_DIRT
+  - PODZOL
+  - MYCELIUM
+  # Desert / beach
+  - SAND
+  - RED_SAND
+  # Mountain / stone
+  - STONE
+  - DEEPSLATE
+  - TUFF
+  - CALCITE
+  - DRIPSTONE_BLOCK
+  # Snowy
+  - SNOW_BLOCK
+  - POWDER_SNOW
