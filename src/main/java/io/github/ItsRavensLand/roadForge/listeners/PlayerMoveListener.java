@@ -20,78 +20,65 @@ import java.util.UUID;
 
 public class PlayerMoveListener implements Listener {
 
-    private final TrafficManager trafficManager;
-    private final ConfigManager configManager;
-    private final int radius;
-
-    // Tracks last block position per player to ensure actual movement
-    private final Map<UUID, long[]> lastBlockPos = new HashMap<>();
+    private final TrafficManager    traffic;
+    private final ConfigManager     config;
+    private final int               radius;
+    private final Map<UUID, long[]> lastPos = new HashMap<>();
 
     public PlayerMoveListener(RoadForge plugin) {
-        this.trafficManager = plugin.getTrafficManager();
-        this.configManager = plugin.getConfigManager();
-        this.radius = configManager.getTrafficRadius();
+        this.traffic = plugin.getTrafficManager();
+        this.config  = plugin.getConfigManager();
+        this.radius  = config.getTrafficRadius();
     }
 
     @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = true)
-    public void onPlayerMove(PlayerMoveEvent event) {
+    public void onMove(PlayerMoveEvent event) {
         Location from = event.getFrom();
-        Location to = event.getTo();
+        Location to   = event.getTo();
         if (to == null || to.getWorld() == null) return;
-
-        // Must have moved to a different XZ block
         if (from.getBlockX() == to.getBlockX() && from.getBlockZ() == to.getBlockZ()) return;
 
         Player player = event.getPlayer();
-        if (!configManager.isWorldEnabled(to.getWorld().getName())) return;
+        if (!config.isWorldEnabled(to.getWorld().getName())) return;
         if (player.getGameMode() == GameMode.SPECTATOR) return;
-        if (player.isFlying()) return;
-        if (player.isGliding()) return;
+        if (player.isFlying() || player.isGliding()) return;
 
-        // Ensure player actually moved to a NEW block (not same block as last event)
-        UUID uuid = player.getUniqueId();
-        long[] last = lastBlockPos.get(uuid);
-        int bx = to.getBlockX();
-        int bz = to.getBlockZ();
-
+        // Deduplicate: skip if still on same block as last recorded step
+        int bx = to.getBlockX(), bz = to.getBlockZ();
+        long[] last = lastPos.get(player.getUniqueId());
         if (last != null && last[0] == bx && last[1] == bz) return;
-        lastBlockPos.put(uuid, new long[]{bx, bz});
+        lastPos.put(player.getUniqueId(), new long[]{bx, bz});
 
-        World world = to.getWorld();
-        int centerY = to.getBlockY() - 1;
+        World world   = to.getWorld();
+        int   centerY = to.getBlockY() - 1;
 
         for (int dx = -radius; dx <= radius; dx++) {
             for (int dz = -radius; dz <= radius; dz++) {
-                if (Math.abs(dx) == radius && Math.abs(dz) == radius) continue;
+                if (Math.abs(dx) == radius && Math.abs(dz) == radius) continue; // round corners
 
-                int tx = bx + dx;
-                int tz = bz + dz;
-
-                int ty = findSurfaceY(world, tx, centerY, tz);
+                int tx = bx + dx, tz = bz + dz;
+                int ty = surfaceY(world, tx, centerY, tz);
                 if (ty == Integer.MIN_VALUE) continue;
 
                 Material mat = world.getBlockAt(tx, ty, tz).getType();
                 if (RoadTier.fromMaterial(mat) == null) continue;
                 if (!world.getBlockAt(tx, ty + 1, tz).getType().isAir()) continue;
 
-                double dist = Math.sqrt(dx * dx + dz * dz);
-                long points = dist == 0 ? 3 : (dist <= 1 ? 2 : 1);
-
-                trafficManager.addPoints(new Location(world, tx, ty, tz), points);
+                double dist   = Math.sqrt(dx * dx + dz * dz);
+                long   points = dist == 0 ? 3 : (dist <= 1 ? 2 : 1);
+                traffic.addPoints(new Location(world, tx, ty, tz), points);
             }
         }
     }
 
-    private int findSurfaceY(World world, int x, int referenceY, int z) {
+    /** Finds walkable surface Y near referenceY (±3 blocks). */
+    private int surfaceY(World world, int x, int refY, int z) {
         for (int dy = 0; dy <= 3; dy++) {
             for (int sign : new int[]{0, 1, -1}) {
-                int y = referenceY + (sign * dy);
+                int y = refY + (sign * dy);
                 if (y < world.getMinHeight() || y >= world.getMaxHeight()) continue;
-
-                Material mat = world.getBlockAt(x, y, z).getType();
-                Material above = world.getBlockAt(x, y + 1, z).getType();
-
-                if (mat.isSolid() && above.isAir()) return y;
+                if (world.getBlockAt(x, y, z).getType().isSolid()
+                        && world.getBlockAt(x, y + 1, z).getType().isAir()) return y;
             }
         }
         return Integer.MIN_VALUE;

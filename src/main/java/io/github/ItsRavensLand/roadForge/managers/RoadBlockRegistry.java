@@ -6,18 +6,12 @@ import org.bukkit.configuration.file.FileConfiguration;
 
 import java.util.*;
 
-/**
- * Loads road-blocks and overlay-blocks from config.
- * Uses weighted random selection.
- */
+/** Weighted random selection of road and overlay blocks from config. */
 public class RoadBlockRegistry {
 
-    // tier (1-5) -> weighted list of materials
-    private final Map<Integer, List<WeightedMaterial>> tierBlocks = new HashMap<>();
-
-    // overlay weighted list (null entry = NONE/skip)
-    private final List<WeightedMaterial> overlayBlocks = new ArrayList<>();
-    private boolean overlayEnabled = false;
+    private final Map<Integer, List<WeightedMaterial>> tierBlocks    = new HashMap<>();
+    private final List<WeightedMaterial>               overlayBlocks = new ArrayList<>();
+    private       boolean                              overlayEnabled = false;
 
     private static final Random RANDOM = new Random();
 
@@ -29,49 +23,33 @@ public class RoadBlockRegistry {
         tierBlocks.clear();
         overlayBlocks.clear();
 
-        // Load road-blocks per tier
         ConfigurationSection roadSection = config.getConfigurationSection("road-blocks");
         if (roadSection != null) {
             for (int tier = 1; tier <= 5; tier++) {
-                ConfigurationSection tierSection = roadSection.getConfigurationSection("tier-" + tier);
-                if (tierSection == null) continue;
-
+                ConfigurationSection sec = roadSection.getConfigurationSection("tier-" + tier);
+                if (sec == null) continue;
                 List<WeightedMaterial> list = new ArrayList<>();
-                for (String key : tierSection.getKeys(false)) {
-                    if (key.equals("NONE")) {
-                        list.add(new WeightedMaterial(null, tierSection.getInt(key)));
-                        continue;
-                    }
-                    try {
-                        Material mat = Material.valueOf(key);
-                        list.add(new WeightedMaterial(mat, tierSection.getInt(key)));
-                    } catch (IllegalArgumentException ignored) {}
+                for (String key : sec.getKeys(false)) {
+                    if (key.equals("NONE")) { list.add(new WeightedMaterial(null, sec.getInt(key))); continue; }
+                    try { list.add(new WeightedMaterial(Material.valueOf(key), sec.getInt(key))); }
+                    catch (IllegalArgumentException ignored) {}
                 }
                 if (!list.isEmpty()) tierBlocks.put(tier, list);
             }
         }
 
-        // Load overlay blocks
         overlayEnabled = config.getBoolean("overlay.enabled", false);
-        ConfigurationSection overlaySection = config.getConfigurationSection("overlay.blocks");
-        if (overlaySection != null) {
-            for (String key : overlaySection.getKeys(false)) {
-                if (key.equals("NONE")) {
-                    overlayBlocks.add(new WeightedMaterial(null, overlaySection.getInt(key)));
-                    continue;
-                }
-                try {
-                    Material mat = Material.valueOf(key);
-                    overlayBlocks.add(new WeightedMaterial(mat, overlaySection.getInt(key)));
-                } catch (IllegalArgumentException ignored) {}
+        ConfigurationSection overlaySec = config.getConfigurationSection("overlay.blocks");
+        if (overlaySec != null) {
+            for (String key : overlaySec.getKeys(false)) {
+                if (key.equals("NONE")) { overlayBlocks.add(new WeightedMaterial(null, overlaySec.getInt(key))); continue; }
+                try { overlayBlocks.add(new WeightedMaterial(Material.valueOf(key), overlaySec.getInt(key))); }
+                catch (IllegalArgumentException ignored) {}
             }
         }
     }
 
-    /**
-     * Returns a random material for the given tier (1-5).
-     * Falls back to RoadTier default if not configured.
-     */
+    /** Pick road material for a tier; falls back to default if tier not configured. */
     public Material pickForTier(int tier, Material fallback) {
         List<WeightedMaterial> list = tierBlocks.get(tier);
         if (list == null || list.isEmpty()) return fallback;
@@ -79,26 +57,21 @@ public class RoadBlockRegistry {
         return picked.material != null ? picked.material : fallback;
     }
 
-    /**
-     * Returns a random overlay material, or null if NONE or disabled.
-     */
+    /** Pick overlay material; returns null if disabled or NONE is rolled. */
     public Material pickOverlay() {
         if (!overlayEnabled || overlayBlocks.isEmpty()) return null;
-        WeightedMaterial picked = weightedPick(overlayBlocks);
-        return picked.material; // null = NONE = skip
+        return weightedPick(overlayBlocks).material;
     }
 
-    public boolean isOverlayEnabled() {
-        return overlayEnabled;
-    }
+    public boolean isOverlayEnabled() { return overlayEnabled; }
 
     private WeightedMaterial weightedPick(List<WeightedMaterial> list) {
         int total = list.stream().mapToInt(w -> w.weight).sum();
-        int roll = RANDOM.nextInt(Math.max(total, 1));
-        int cumulative = 0;
+        int roll  = RANDOM.nextInt(Math.max(total, 1));
+        int cum   = 0;
         for (WeightedMaterial wm : list) {
-            cumulative += wm.weight;
-            if (roll < cumulative) return wm;
+            cum += wm.weight;
+            if (roll < cum) return wm;
         }
         return list.get(list.size() - 1);
     }

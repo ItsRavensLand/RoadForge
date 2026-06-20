@@ -1,6 +1,4 @@
 package io.github.ItsRavensLand.roadForge.commands;
-
-
 import io.github.ItsRavensLand.roadForge.RoadForge;
 import org.bukkit.command.Command;
 import org.bukkit.command.CommandExecutor;

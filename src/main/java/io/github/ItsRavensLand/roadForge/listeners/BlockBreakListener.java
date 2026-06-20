@@ -1,7 +1,5 @@
 package io.github.ItsRavensLand.roadForge.listeners;
 
-
-import io.github.ItsRavensLand.roadForge.RoadForge;
 import io.github.ItsRavensLand.roadForge.models.RoadTier;
 import org.bukkit.Material;
 import org.bukkit.event.EventHandler;
@@ -13,13 +11,8 @@ import java.util.Set;
 
 public class BlockBreakListener implements Listener {
 
-    private final RoadForge plugin;
-
-    public BlockBreakListener(RoadForge plugin) {
-        this.plugin = plugin;
-    }
-
-    private static final Set<Material> WALL_MATERIALS = Set.of(
+    // Road blocks and walls drop nothing when broken
+    private static final Set<Material> NO_DROP = Set.of(
             Material.COBBLESTONE_WALL,
             Material.MOSSY_COBBLESTONE_WALL,
             Material.STONE_BRICK_WALL,
@@ -27,11 +20,10 @@ public class BlockBreakListener implements Listener {
     );
 
     @EventHandler(priority = EventPriority.HIGH, ignoreCancelled = true)
-    public void onBlockBreak(BlockBreakEvent event) {
-        Material mat = event.getBlock().getType();
+    public void onBreak(BlockBreakEvent event) {
+        Material mat  = event.getBlock().getType();
         RoadTier tier = RoadTier.fromMaterial(mat);
-
-        if ((tier != null && !tier.isBase()) || WALL_MATERIALS.contains(mat)) {
+        if ((tier != null && !tier.isBase()) || NO_DROP.contains(mat)) {
             event.setDropItems(false);
             event.setExpToDrop(0);
         }

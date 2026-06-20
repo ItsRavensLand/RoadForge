@@ -1,6 +1,5 @@
 package io.github.ItsRavensLand.roadForge.managers;
 
-
 import io.github.ItsRavensLand.roadForge.RoadForge;
 import io.github.ItsRavensLand.roadForge.models.TrafficBlock;
 import org.bukkit.Location;
@@ -16,51 +15,42 @@ import java.util.logging.Level;
 public class TrafficManager {
 
     private final RoadForge plugin;
-    private final Map<String, TrafficBlock> trafficData = new ConcurrentHashMap<>();
-    private File dataFile;
+    private final Map<String, TrafficBlock> data = new ConcurrentHashMap<>();
+    private final File dataFile;
 
     public TrafficManager(RoadForge plugin) {
-        this.plugin = plugin;
+        this.plugin   = plugin;
         this.dataFile = new File(plugin.getDataFolder(), "traffic.yml");
     }
 
-    public void recordStep(Location location) {
-        String key = buildKey(location);
-        trafficData.computeIfAbsent(key, k -> new TrafficBlock(location)).addPoint();
-    }
-
     public void addPoints(Location location, long amount) {
-        String key = buildKey(location);
-        trafficData.computeIfAbsent(key, k -> new TrafficBlock(location)).addPoints(amount);
+        String key = key(location);
+        data.computeIfAbsent(key, k -> new TrafficBlock(location)).addPoints(amount);
     }
 
     public long getPoints(Location location) {
-        TrafficBlock block = trafficData.get(buildKey(location));
+        TrafficBlock block = data.get(key(location));
         return block == null ? 0 : block.getPoints();
     }
 
-    public TrafficBlock getBlock(Location location) {
-        return trafficData.get(buildKey(location));
-    }
-
     public Collection<TrafficBlock> getAllBlocks() {
-        return trafficData.values();
+        return data.values();
     }
 
     public void applyDecay(long amount) {
-        trafficData.values().forEach(block -> block.decay(amount));
-        trafficData.entrySet().removeIf(e -> e.getValue().getPoints() == 0);
+        data.values().forEach(b -> b.decay(amount));
+        data.entrySet().removeIf(e -> e.getValue().getPoints() == 0);
     }
 
     public void save() {
         YamlConfiguration yaml = new YamlConfiguration();
-        for (TrafficBlock block : trafficData.values()) {
-            String key = block.getKey().replace(".", "_");
-            yaml.set("blocks." + key + ".x", block.getX());
-            yaml.set("blocks." + key + ".y", block.getY());
-            yaml.set("blocks." + key + ".z", block.getZ());
-            yaml.set("blocks." + key + ".world", block.getWorld());
-            yaml.set("blocks." + key + ".points", block.getPoints());
+        for (TrafficBlock b : data.values()) {
+            String k = b.getKey().replace(".", "_");
+            yaml.set("blocks." + k + ".x",      b.getX());
+            yaml.set("blocks." + k + ".y",      b.getY());
+            yaml.set("blocks." + k + ".z",      b.getZ());
+            yaml.set("blocks." + k + ".world",  b.getWorld());
+            yaml.set("blocks." + k + ".points", b.getPoints());
         }
         try {
             yaml.save(dataFile);
@@ -75,22 +65,19 @@ public class TrafficManager {
         var section = yaml.getConfigurationSection("blocks");
         if (section == null) return;
 
-        for (String key : section.getKeys(false)) {
-            int x = section.getInt(key + ".x");
-            int y = section.getInt(key + ".y");
-            int z = section.getInt(key + ".z");
-            String world = section.getString(key + ".world", "world");
-            long points = section.getLong(key + ".points");
+        for (String k : section.getKeys(false)) {
+            int    x      = section.getInt(k + ".x");
+            int    y      = section.getInt(k + ".y");
+            int    z      = section.getInt(k + ".z");
+            String world  = section.getString(k + ".world", "world");
+            long   points = section.getLong(k + ".points");
             TrafficBlock block = new TrafficBlock(x, y, z, world, points);
-            trafficData.put(block.getKey(), block);
+            data.put(block.getKey(), block);
         }
-        plugin.getLogger().info("Loaded " + trafficData.size() + " traffic blocks.");
+        plugin.getLogger().info("Loaded " + data.size() + " traffic blocks.");
     }
 
-    private String buildKey(Location location) {
-        return location.getWorld().getName() + ":"
-                + location.getBlockX() + ":"
-                + location.getBlockY() + ":"
-                + location.getBlockZ();
+    private String key(Location loc) {
+        return loc.getWorld().getName() + ":" + loc.getBlockX() + ":" + loc.getBlockY() + ":" + loc.getBlockZ();
     }
 }
