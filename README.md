@@ -55,7 +55,7 @@ Each tier has weighted material variants (mossy cobblestone, cracked stone brick
 
 ## Installation
 
-1. Download the [latest release](https://github.com/<USER>/<REPO>/releases/latest)
+1. Download the [latest release](https://github.com/ItsRavensLand/RoadForge/releases/latest)
 2. Drop `RoadForge.jar` into your `plugins/` folder
 3. Restart the server
 4. Configure `plugins/RoadForge/config.yml` to taste
