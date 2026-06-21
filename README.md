@@ -55,10 +55,11 @@ Each tier has weighted material variants (mossy cobblestone, cracked stone brick
 
 ## Installation
 
-1. Drop `RoadForge.jar` into your `plugins/` folder
-2. Restart the server
-3. Configure `plugins/RoadForge/config.yml` to taste
-4. Walk around
+1. Download the [latest release](https://github.com/<USER>/<REPO>/releases/latest)
+2. Drop `RoadForge.jar` into your `plugins/` folder
+3. Restart the server
+4. Configure `plugins/RoadForge/config.yml` to taste
+5. Walk around
 
 ---
 
@@ -95,3 +96,9 @@ The config is fully documented. Key values to tune:
 Part of the [RavensLand](https://github.com/ItsRavensLand) plugin suite.
 
 Built with Paper API · Java 21 · Gradle
+
+---
+
+## License
+
+MIT
